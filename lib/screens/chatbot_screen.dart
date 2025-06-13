@@ -5,7 +5,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:open_file/open_file.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:logger/logger.dart';
+import '../services/firestore_service.dart';
 
 class ChatbotScreen extends StatefulWidget {
   const ChatbotScreen({super.key});
@@ -16,24 +16,50 @@ class ChatbotScreen extends StatefulWidget {
 
 class _ChatbotScreenState extends State<ChatbotScreen> {
   final TextEditingController _messageController = TextEditingController();
-  List<Map<String, String>> messages = [];
+  final List<Map<String, String>> messages = [];
+  final FirestoreService _firestoreService = FirestoreService();
   bool isLoading = false;
 
-  final Logger logger = Logger();
+  @override
+  void initState() {
+    super.initState();
+    loadChatHistory();
+  }
+
+  Future<void> loadChatHistory() async {
+    final history = await _firestoreService.getChatHistory();
+    setState(() {
+      messages.addAll(history);
+    });
+  }
 
   Future<void> sendMessage(String message) async {
-    if (message.isEmpty) return;
+    if (message.trim().isEmpty) return;
 
     setState(() {
       messages.add({'sender': 'user', 'text': message});
       isLoading = true;
     });
 
+    try {
+      await _firestoreService.addChatMessage('user', message);
+    } catch (e) {
+      print('Firestore user message error: $e');
+    }
+
     final response = await fetchDoctorResponse(message);
+
     setState(() {
       messages.add({'sender': 'bot', 'text': response});
       isLoading = false;
     });
+
+    try {
+      await _firestoreService.addChatMessage('bot', response);
+    } catch (e) {
+      print('Firestore bot message error: $e');
+    }
+
     _messageController.clear();
   }
 
@@ -63,10 +89,12 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         final data = jsonDecode(response.body);
         return data["choices"][0]["message"]["content"];
       } else {
-        return "API Error: ${response.statusCode} - ${response.body}";
+        print("Groq API Error: ${response.statusCode} - ${response.body}");
+        return "Sorry, something went wrong. Please try again.";
       }
     } catch (e) {
-      return "Error: $e";
+      print("Fetch error: $e");
+      return "An error occurred. Please try again.";
     }
   }
 
@@ -78,7 +106,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
             pw.Text("Medical Report", style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
-            ...messages.where((msg) => msg['sender'] == 'bot').map((msg) => pw.Text(msg['text']!)),
+            ...messages
+                .where((msg) => msg['sender'] == 'bot')
+                .map((msg) => pw.Text(msg['text'] ?? '')),
           ],
         );
       },
@@ -106,30 +136,36 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         children: [
           Expanded(
             child: ListView.builder(
+              reverse: true,
               itemCount: messages.length,
               itemBuilder: (context, index) {
-                final msg = messages[index];
-                bool isUser = msg['sender'] == 'user';
+                final msg = messages[messages.length - index - 1];
+                final isUser = msg['sender'] == 'user';
 
                 return Row(
-                  mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+                  mainAxisAlignment:
+                      isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
                   children: [
                     Container(
                       padding: const EdgeInsets.all(12),
                       margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+                      constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.7),
                       decoration: BoxDecoration(
                         color: isUser ? Colors.blue : Colors.grey[300],
                         borderRadius: BorderRadius.only(
                           topLeft: const Radius.circular(12),
                           topRight: const Radius.circular(12),
-                          bottomLeft: isUser ? const Radius.circular(12) : Radius.zero,
-                          bottomRight: isUser ? Radius.zero : const Radius.circular(12),
+                          bottomLeft:
+                              isUser ? const Radius.circular(12) : Radius.zero,
+                          bottomRight:
+                              isUser ? Radius.zero : const Radius.circular(12),
                         ),
                       ),
                       child: Text(
-                        msg['text']!,
-                        style: TextStyle(color: isUser ? Colors.white : Colors.black),
+                        msg['text'] ?? '',
+                        style: TextStyle(
+                            color: isUser ? Colors.white : Colors.black),
                       ),
                     ),
                   ],
@@ -137,7 +173,11 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
               },
             ),
           ),
-          if (isLoading) const CircularProgressIndicator(),
+          if (isLoading)
+            const Padding(
+              padding: EdgeInsets.all(8),
+              child: CircularProgressIndicator(),
+            ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
