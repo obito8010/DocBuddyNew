@@ -23,10 +23,17 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
   void initState() {
     super.initState();
     _initializeSpeech();
+    _tts.setCompletionHandler(() {
+      setState(() => _isSpeaking = false);
+    });
   }
 
   Future<void> _initializeSpeech() async {
-    bool available = await _speech.initialize();
+    bool available = await _speech.initialize(
+      onStatus: (status) => print('Speech status: $status'),
+      onError: (error) => print('Speech error: $error'),
+    );
+
     if (!available) {
       setState(() {
         _recognizedText = "Speech recognition not available";
@@ -35,20 +42,35 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
   }
 
   void _startListening() async {
+    if (_isSpeaking) {
+      await _tts.stop();
+      setState(() => _isSpeaking = false);
+    }
+
     if (!_isListening) {
-      setState(() => _isListening = true);
-      await _speech.listen(onResult: (result) {
-        setState(() {
-          _recognizedText = result.recognizedWords;
-        });
-      });
+      bool available = await _speech.initialize();
+
+      if (available) {
+        setState(() => _isListening = true);
+        await _speech.listen(
+          onResult: (result) {
+            setState(() => _recognizedText = result.recognizedWords);
+            if (result.finalResult) _stopListening();
+          },
+        );
+      } else {
+        setState(() => _recognizedText = "Speech recognition not available");
+      }
     }
   }
 
   void _stopListening() async {
-    setState(() => _isListening = false);
     await _speech.stop();
-    _getChatbotResponse(_recognizedText);
+    setState(() => _isListening = false);
+
+    if (_recognizedText.isNotEmpty && _recognizedText != "Tap the mic and start speaking...") {
+      _getChatbotResponse(_recognizedText);
+    }
   }
 
   Future<void> _getChatbotResponse(String userInput) async {
@@ -57,7 +79,7 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
     });
 
     const String apiUrl = "https://api.groq.com/openai/v1/chat/completions";
-    const String apiKey = "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"; // 🔐 Replace if needed
+    const String apiKey = "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"; // Replace if needed
 
     try {
       final response = await http.post(
@@ -71,7 +93,8 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
           "messages": [
             {
               "role": "system",
-              "content": "You are DocBuddy, a professional virtual doctor. Provide short, precise and complete medical advice in a brief manner, avoiding unnecessary details."
+              "content":
+                  "You are DocBuddy, a professional virtual doctor. Provide short, precise and complete medical advice in a brief manner, avoiding unnecessary details."
             },
             {
               "role": "user",
@@ -85,9 +108,7 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         String chatbotReply = data["choices"][0]["message"]["content"];
-        setState(() {
-          _conversation.add({"bot": chatbotReply});
-        });
+        setState(() => _conversation.add({"bot": chatbotReply}));
         _speak(chatbotReply);
       } else {
         _speak("Sorry, I couldn't process your request.");
@@ -100,12 +121,18 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
   Future<void> _speak(String text) async {
     setState(() => _isSpeaking = true);
     await _tts.speak(text);
-    setState(() => _isSpeaking = false);
   }
 
   void _stopSpeaking() async {
     await _tts.stop();
     setState(() => _isSpeaking = false);
+  }
+
+  @override
+  void dispose() {
+    _speech.stop();
+    _tts.stop();
+    super.dispose();
   }
 
   @override
