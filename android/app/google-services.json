@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "237165671850",
+    "project_id": "docbuddy-1af65",
+    "storage_bucket": "docbuddy-1af65.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:237165671850:android:5e19af5043ee4f81bb27d3",
+        "android_client_info": {
+          "package_name": "com.example.docbuddy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyByeC5hGpI0q5Kg_dihTN_pPYCOouNk5IY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
