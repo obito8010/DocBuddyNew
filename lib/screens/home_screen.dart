@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'chatbot_screen.dart'; // Reference to your DocChat Bot
-import 'virtual_assistant_screen.dart'; // Reference to your Virtual Assistant
+import 'chatbot_screen.dart';
+import 'virtual_assistant_screen.dart';
+import '../main.dart'; // For accessing `themeNotifier`
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   void _logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
-    // No need to manually navigate, AuthGate will redirect to LoginScreen
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Logged out successfully')),
     );
@@ -19,6 +19,20 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('DocBuddy Home'),
+        actions: [
+          IconButton(
+            icon: Icon(
+              themeNotifier.value == ThemeMode.dark
+                  ? Icons.dark_mode
+                  : Icons.light_mode,
+            ),
+            onPressed: () {
+              themeNotifier.value = themeNotifier.value == ThemeMode.light
+                  ? ThemeMode.dark
+                  : ThemeMode.light;
+            },
+          ),
+        ],
       ),
       drawer: Drawer(
         child: ListView(
