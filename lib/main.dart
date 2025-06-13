@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 
-final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light); // 👈 Theme notifier
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,7 +43,7 @@ class DocBuddyApp extends StatelessWidget {
             primarySwatch: Colors.teal,
             scaffoldBackgroundColor: const Color(0xFF121212),
           ),
-          themeMode: mode, // 👈 Dynamic theme mode
+          themeMode: mode,
           home: const AuthGate(),
         );
       },

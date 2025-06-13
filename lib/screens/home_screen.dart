@@ -1,21 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import 'chatbot_screen.dart';
 import 'virtual_assistant_screen.dart';
-import '../main.dart'; // For accessing `themeNotifier`
+import '../main.dart'; // For themeNotifier
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   void _logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Logged out successfully')),
     );
+    // AuthGate will auto-redirect to LoginScreen
   }
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('DocBuddy Home'),
@@ -23,8 +28,8 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             icon: Icon(
               themeNotifier.value == ThemeMode.dark
-                  ? Icons.dark_mode
-                  : Icons.light_mode,
+                  ? Icons.light_mode
+                  : Icons.dark_mode,
             ),
             onPressed: () {
               themeNotifier.value = themeNotifier.value == ThemeMode.light
@@ -38,13 +43,13 @@ class HomeScreen extends StatelessWidget {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.teal,
-              ),
-              child: Text(
-                'Welcome to DocBuddy',
-                style: TextStyle(color: Colors.white, fontSize: 20),
+            UserAccountsDrawerHeader(
+              decoration: const BoxDecoration(color: Colors.teal),
+              accountName: const Text(''),
+              accountEmail: Text(user?.email ?? "User"),
+              currentAccountPicture: const CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Icon(Icons.person, color: Colors.teal),
               ),
             ),
             ListTile(
