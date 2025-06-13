@@ -41,12 +41,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       isLoading = true;
     });
 
-    try {
-      await _firestoreService.addChatMessage('user', message);
-    } catch (e) {
-      print('Firestore user message error: $e');
-    }
-
+    await _firestoreService.addChatMessage('user', message);
     final response = await fetchDoctorResponse(message);
 
     setState(() {
@@ -54,12 +49,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       isLoading = false;
     });
 
-    try {
-      await _firestoreService.addChatMessage('bot', response);
-    } catch (e) {
-      print('Firestore bot message error: $e');
-    }
-
+    await _firestoreService.addChatMessage('bot', response);
     _messageController.clear();
   }
 
@@ -89,11 +79,9 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         final data = jsonDecode(response.body);
         return data["choices"][0]["message"]["content"];
       } else {
-        print("Groq API Error: ${response.statusCode} - ${response.body}");
         return "Sorry, something went wrong. Please try again.";
       }
     } catch (e) {
-      print("Fetch error: $e");
       return "An error occurred. Please try again.";
     }
   }
@@ -124,90 +112,102 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('DocBuddy'),
+        title: const Text('DocBuddy Chat'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.download),
+            tooltip: 'Download Report',
+            icon: const Icon(Icons.download_for_offline_rounded),
             onPressed: generateReport,
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              reverse: true,
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final msg = messages[messages.length - index - 1];
-                final isUser = msg['sender'] == 'user';
+      body: Container(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                reverse: true,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                itemCount: messages.length,
+                itemBuilder: (context, index) {
+                  final msg = messages[messages.length - index - 1];
+                  final isUser = msg['sender'] == 'user';
 
-                return Row(
-                  mainAxisAlignment:
-                      isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                      constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.7),
+                  return Align(
+                    alignment:
+                        isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: isUser ? Colors.blue : Colors.grey[300],
+                        color: isUser ? Colors.teal : Colors.grey.shade300,
                         borderRadius: BorderRadius.only(
-                          topLeft: const Radius.circular(12),
-                          topRight: const Radius.circular(12),
-                          bottomLeft:
-                              isUser ? const Radius.circular(12) : Radius.zero,
-                          bottomRight:
-                              isUser ? Radius.zero : const Radius.circular(12),
+                          topLeft: const Radius.circular(18),
+                          topRight: const Radius.circular(18),
+                          bottomLeft: isUser ? const Radius.circular(18) : Radius.zero,
+                          bottomRight: isUser ? Radius.zero : const Radius.circular(18),
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 4,
+                            offset: const Offset(2, 2),
+                          ),
+                        ],
                       ),
                       child: Text(
                         msg['text'] ?? '',
                         style: TextStyle(
-                            color: isUser ? Colors.white : Colors.black),
+                          color: isUser ? Colors.white : Colors.black87,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
-                  ],
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-          if (isLoading)
-            const Padding(
-              padding: EdgeInsets.all(8),
-              child: CircularProgressIndicator(),
-            ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: Colors.grey, width: 1),
-                    ),
-                    child: TextField(
-                      controller: _messageController,
-                      decoration: const InputDecoration(
-                        hintText: "Message...",
-                        border: InputBorder.none,
+            if (isLoading)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 10),
+                child: CircularProgressIndicator(),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(color: Colors.grey.shade400),
+                      ),
+                      child: TextField(
+                        controller: _messageController,
+                        decoration: const InputDecoration(
+                          hintText: "Ask something...",
+                          border: InputBorder.none,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.send, color: Colors.blue, size: 28),
-                  onPressed: () => sendMessage(_messageController.text),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: Colors.teal,
+                    child: IconButton(
+                      icon: const Icon(Icons.send, color: Colors.white),
+                      onPressed: () => sendMessage(_messageController.text),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -68,7 +68,8 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
     await _speech.stop();
     setState(() => _isListening = false);
 
-    if (_recognizedText.isNotEmpty && _recognizedText != "Tap the mic and start speaking...") {
+    if (_recognizedText.isNotEmpty &&
+        _recognizedText != "Tap the mic and start speaking...") {
       _getChatbotResponse(_recognizedText);
     }
   }
@@ -79,7 +80,7 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
     });
 
     const String apiUrl = "https://api.groq.com/openai/v1/chat/completions";
-    const String apiKey = "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"; // Replace if needed
+    const String apiKey = "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";
 
     try {
       final response = await http.post(
@@ -135,55 +136,118 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
     super.dispose();
   }
 
+  Widget _buildChatBubble(String text, bool isUser) {
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        padding: const EdgeInsets.all(14),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        decoration: BoxDecoration(
+          color: isUser ? Colors.teal : Colors.grey.shade200,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(isUser ? 16 : 0),
+            bottomRight: Radius.circular(isUser ? 0 : 16),
+          ),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: isUser ? Colors.white : Colors.black87,
+            fontSize: 16,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Virtual Doctor Assistant')),
+      backgroundColor: Colors.blueGrey.shade50,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.teal,
+        title: Row(
+          children: const [
+            Icon(Icons.mic, color: Colors.white),
+            SizedBox(width: 10),
+            Text('Virtual Doctor Assistant'),
+          ],
+        ),
+      ),
       body: Column(
         children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.teal, Colors.tealAccent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  radius: 24,
+                  backgroundColor: Colors.white,
+                  child: Icon(Icons.health_and_safety, color: Colors.teal),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _recognizedText,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.all(16.0),
+              reverse: true,
               itemCount: _conversation.length,
+              padding: const EdgeInsets.symmetric(vertical: 10),
               itemBuilder: (context, index) {
-                final message = _conversation[index];
+                final message = _conversation[_conversation.length - 1 - index];
                 final isUser = message.containsKey("user");
-                return Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 5.0),
-                    padding: const EdgeInsets.all(12.0),
-                    decoration: BoxDecoration(
-                      color: isUser ? Colors.blueAccent : Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      isUser ? message["user"]! : message["bot"]!,
-                      style: TextStyle(color: isUser ? Colors.white : Colors.black),
-                    ),
-                  ),
+                return _buildChatBubble(
+                  isUser ? message["user"]! : message["bot"]!,
+                  isUser,
                 );
               },
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (_isSpeaking)
-                  FloatingActionButton(
-                    onPressed: _stopSpeaking,
-                    heroTag: 'stopSpeaking',
-                    child: const Icon(Icons.stop),
-                  ),
-                const SizedBox(width: 10),
-                FloatingActionButton(
-                  onPressed: _isListening ? _stopListening : _startListening,
-                  heroTag: 'micControl',
-                  child: Icon(_isListening ? Icons.mic_off : Icons.mic),
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: GestureDetector(
+              onTap: _isListening ? _stopListening : _startListening,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                height: 70,
+                width: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _isListening ? Colors.redAccent : Colors.teal,
+                  boxShadow: [
+                    if (_isListening)
+                      BoxShadow(
+                        color: Colors.redAccent.withOpacity(0.6),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      )
+                  ],
                 ),
-              ],
+                child: Icon(
+                  _isListening ? Icons.mic_off : Icons.mic,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ),
             ),
           ),
         ],
