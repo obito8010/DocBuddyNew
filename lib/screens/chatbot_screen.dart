@@ -66,12 +66,24 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           "messages": [
             {
               "role": "system",
-              "content":
-                  "You are DocBuddy, a professional and highly knowledgeable doctor chatbot. You **must not** tell users to consult a doctor. Instead, provide a **clear diagnosis, medications, precautions, treatments, and diet recommendations** based on symptoms. Keep responses **short and accurate**."
+              "content": """
+You are DocBuddy, a friendly and professional virtual doctor. Always begin conversations by warmly greeting the user. Ask relevant follow-up questions if symptoms are unclear. Provide responses ONLY related to health or medical issues.
+
+Your reply should include:
+- Diagnosis (if applicable)
+- Possible causes
+- Recommended medications (common OTC where possible)
+- Precautions
+- Basic treatment
+- Dietary advice
+- And in case of serious or emergency symptoms, suggest: "Please consult a real doctor immediately."
+
+Keep the tone empathetic, supportive, and human-like — like a real doctor who cares about the patient.
+"""
             },
             {"role": "user", "content": userMessage}
           ],
-          "max_tokens": 100
+          "max_tokens": 500
         }),
       );
 
@@ -88,22 +100,31 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   Future<void> generateReport() async {
     final pdf = pw.Document();
-    pdf.addPage(pw.Page(
+    pdf.addPage(pw.MultiPage(
       build: (pw.Context context) {
-        return pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Text("Medical Report", style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
-            ...messages
-                .where((msg) => msg['sender'] == 'bot')
-                .map((msg) => pw.Text(msg['text'] ?? '')),
-          ],
-        );
+        return [
+          pw.Text("DocBuddy Medical Report", style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 10),
+          pw.Divider(),
+          ...messages.map((msg) => pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    "${msg['sender'] == 'user' ? 'You' : 'DocBuddy'}:",
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                  ),
+                  pw.Text(msg['text'] ?? ''),
+                  pw.SizedBox(height: 10),
+                ],
+              )),
+          pw.SizedBox(height: 20),
+          pw.Text("⚠️ Note: This is an AI-generated report. For serious conditions, please consult a real doctor.", style: pw.TextStyle(fontStyle: pw.FontStyle.italic)),
+        ];
       },
     ));
 
     final directory = await getApplicationDocumentsDirectory();
-    final file = File("${directory.path}/Medical_Report.pdf");
+    final file = File("${directory.path}/DocBuddy_Report.pdf");
     await file.writeAsBytes(await pdf.save());
     OpenFile.open(file.path);
   }
@@ -115,7 +136,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         title: const Text('DocBuddy Chat'),
         actions: [
           IconButton(
-            tooltip: 'Download Report',
+            tooltip: 'Download Medical Report',
             icon: const Icon(Icons.download_for_offline_rounded),
             onPressed: generateReport,
           ),
@@ -135,8 +156,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                   final isUser = msg['sender'] == 'user';
 
                   return Align(
-                    alignment:
-                        isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                     child: Container(
                       margin: const EdgeInsets.symmetric(vertical: 6),
                       padding: const EdgeInsets.all(14),
@@ -188,7 +208,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                       child: TextField(
                         controller: _messageController,
                         decoration: const InputDecoration(
-                          hintText: "Ask something...",
+                          hintText: "Describe your symptoms...",
                           border: InputBorder.none,
                         ),
                       ),
