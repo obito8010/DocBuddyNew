@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
 import 'dart:io';
+import 'dart:convert';
+import 'dart:ui';
+import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:open_file/open_file.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../services/firestore_service.dart';
 
 class ChatbotScreen extends StatefulWidget {
@@ -66,24 +67,12 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           "messages": [
             {
               "role": "system",
-              "content": """
-You are DocBuddy, a friendly and professional virtual doctor. Always begin conversations by warmly greeting the user. Ask relevant follow-up questions if symptoms are unclear. Provide responses ONLY related to health or medical issues.
-
-Your reply should include:
-- Diagnosis (if applicable)
-- Possible causes
-- Recommended medications (common OTC where possible)
-- Precautions
-- Basic treatment
-- Dietary advice
-- And in case of serious or emergency symptoms, suggest: "Please consult a real doctor immediately."
-
-Keep the tone empathetic, supportive, and human-like — like a real doctor who cares about the patient.
-"""
+              "content":
+                  "You are DocBuddy, a friendly and professional AI doctor. Only answer **medical-related questions**. Based on symptoms, provide follow-up questions, possible diagnosis, suggested medicines, precautions, treatments, and diet tips. If the symptoms suggest something serious, **gently tell the user to consult a real doctor**. Avoid robotic tone."
             },
             {"role": "user", "content": userMessage}
           ],
-          "max_tokens": 500
+          "max_tokens": 250
         }),
       );
 
@@ -100,26 +89,21 @@ Keep the tone empathetic, supportive, and human-like — like a real doctor who 
 
   Future<void> generateReport() async {
     final pdf = pw.Document();
-    pdf.addPage(pw.MultiPage(
+    pdf.addPage(pw.Page(
       build: (pw.Context context) {
-        return [
-          pw.Text("DocBuddy Medical Report", style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 10),
-          pw.Divider(),
-          ...messages.map((msg) => pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    "${msg['sender'] == 'user' ? 'You' : 'DocBuddy'}:",
-                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                  ),
-                  pw.Text(msg['text'] ?? ''),
-                  pw.SizedBox(height: 10),
-                ],
-              )),
-          pw.SizedBox(height: 20),
-          pw.Text("⚠️ Note: This is an AI-generated report. For serious conditions, please consult a real doctor.", style: pw.TextStyle(fontStyle: pw.FontStyle.italic)),
-        ];
+        return pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text("DocBuddy - Medical Report", style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 12),
+            ...messages.map((msg) => pw.Text(
+                  "${msg['sender'] == 'user' ? 'You' : 'DocBuddy'}: ${msg['text']}",
+                  style: pw.TextStyle(fontSize: 14),
+                )),
+            pw.SizedBox(height: 20),
+            pw.Text("Note: Please consult a real doctor for serious conditions.", style: pw.TextStyle(fontSize: 12)),
+          ],
+        );
       },
     ));
 
@@ -131,102 +115,123 @@ Keep the tone empathetic, supportive, and human-like — like a real doctor who 
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('DocBuddy Chat'),
+        backgroundColor: isDark ? Colors.transparent : Colors.teal,
+        elevation: isDark ? 0 : 4,
         actions: [
           IconButton(
-            tooltip: 'Download Medical Report',
+            tooltip: 'Download Report',
             icon: const Icon(Icons.download_for_offline_rounded),
             onPressed: generateReport,
           ),
         ],
       ),
+      extendBodyBehindAppBar: isDark,
       body: Container(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView.builder(
-                reverse: true,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                itemCount: messages.length,
-                itemBuilder: (context, index) {
-                  final msg = messages[messages.length - index - 1];
-                  final isUser = msg['sender'] == 'user';
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isDark
+                ? [Color(0xFF0f2027), Color(0xFF203a43), Color(0xFF2c5364)]
+                : [Color(0xFFd0eaf5), Color(0xFFa5cfe8), Color(0xFF7fb1d6)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  reverse: true,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final msg = messages[messages.length - index - 1];
+                    final isUser = msg['sender'] == 'user';
 
-                  return Align(
-                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: isUser ? Colors.teal : Colors.grey.shade300,
-                        borderRadius: BorderRadius.only(
-                          topLeft: const Radius.circular(18),
-                          topRight: const Radius.circular(18),
-                          bottomLeft: isUser ? const Radius.circular(18) : Radius.zero,
-                          bottomRight: isUser ? Radius.zero : const Radius.circular(18),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 4,
-                            offset: const Offset(2, 2),
+                    return Align(
+                      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withOpacity(isUser ? 0.08 : 0.15)
+                              : isUser
+                                  ? Colors.teal
+                                  : Colors.grey.shade300,
+                          borderRadius: BorderRadius.only(
+                            topLeft: const Radius.circular(18),
+                            topRight: const Radius.circular(18),
+                            bottomLeft: isUser ? const Radius.circular(18) : Radius.zero,
+                            bottomRight: isUser ? Radius.zero : const Radius.circular(18),
                           ),
-                        ],
+                          border: isDark
+                              ? Border.all(color: Colors.white.withOpacity(0.2))
+                              : null,
+                        ),
+                        child: Text(
+                          msg['text'] ?? '',
+                          style: TextStyle(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.9)
+                                : isUser
+                                    ? Colors.white
+                                    : Colors.black87,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
-                      child: Text(
-                        msg['text'] ?? '',
-                        style: TextStyle(
-                          color: isUser ? Colors.white : Colors.black87,
-                          fontSize: 16,
+                    );
+                  },
+                ),
+              ),
+              if (isLoading)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 10),
+                  child: CircularProgressIndicator(),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white12 : Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(color: Colors.grey.shade400),
+                        ),
+                        child: TextField(
+                          controller: _messageController,
+                          style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                          decoration: const InputDecoration(
+                            hintText: "Describe your symptoms...",
+                            hintStyle: TextStyle(color: Colors.grey),
+                            border: InputBorder.none,
+                          ),
                         ),
                       ),
                     ),
-                  );
-                },
-              ),
-            ),
-            if (isLoading)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 10),
-                child: CircularProgressIndicator(),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(color: Colors.grey.shade400),
-                      ),
-                      child: TextField(
-                        controller: _messageController,
-                        decoration: const InputDecoration(
-                          hintText: "Describe your symptoms...",
-                          border: InputBorder.none,
-                        ),
+                    const SizedBox(width: 8),
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: Colors.teal,
+                      child: IconButton(
+                        icon: const Icon(Icons.send, color: Colors.white),
+                        onPressed: () => sendMessage(_messageController.text),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: Colors.teal,
-                    child: IconButton(
-                      icon: const Icon(Icons.send, color: Colors.white),
-                      onPressed: () => sendMessage(_messageController.text),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

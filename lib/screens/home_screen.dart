@@ -1,9 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'chatbot_screen.dart';
 import 'virtual_assistant_screen.dart';
-import 'profile_screen.dart'; // Add this import
+import 'profile_screen.dart';
 import '../main.dart'; // themeNotifier
 
 class HomeScreen extends StatelessWidget {
@@ -23,16 +24,20 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final size = MediaQuery.of(context).size;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             UserAccountsDrawerHeader(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.teal, Colors.tealAccent],
+                  colors: isDark
+                      ? [Color(0xFF0f2027), Color(0xFF203a43)]
+                      : [Colors.teal, Colors.tealAccent],
                 ),
               ),
               accountName: const Text('Welcome'),
@@ -85,7 +90,7 @@ class HomeScreen extends StatelessWidget {
               themeNotifier.value == ThemeMode.dark
                   ? Icons.light_mode
                   : Icons.dark_mode,
-              color: Theme.of(context).colorScheme.primary,
+              color: Colors.white,
             ),
             onPressed: () {
               themeNotifier.value = themeNotifier.value == ThemeMode.light
@@ -95,61 +100,81 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      extendBodyBehindAppBar: true,
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFe0f7fa), Color(0xFFffffff)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            colors: isDark
+                ? [Color(0xFF0f2027), Color(0xFF203a43), Color(0xFF2c5364)]
+                : [Color(0xFFd0eaf5), Color(0xFFa5cfe8), Color(0xFF7fb1d6)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              SizedBox(
-                height: size.height * 0.25,
-                child: Card(
-                  margin: const EdgeInsets.all(16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  elevation: 8,
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      children: [
-                        const CircleAvatar(
-                          radius: 36,
-                          backgroundColor: Colors.teal,
-                          child: Icon(Icons.local_hospital, size: 36, color: Colors.white),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                    child: Container(
+                      width: double.infinity,
+                      height: size.height * 0.23,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withOpacity(0.05)
+                            : Colors.white.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
                         ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Text(
-                                "Hello 👋",
-                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          children: [
+                            const CircleAvatar(
+                              radius: 36,
+                              backgroundColor: Colors.teal,
+                              child: Icon(Icons.local_hospital, size: 36, color: Colors.white),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: const [
+                                  Text(
+                                    "Hello 👋",
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    "Need medical help? Ask DocBuddy anything!",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                "Need medical help? Ask DocBuddy anything!",
-                                style: TextStyle(fontSize: 16, color: Colors.black54),
-                              ),
-                            ],
-                          ),
-                        )
-                      ],
+                            )
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -185,11 +210,13 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFeatureCard(BuildContext context,
-      {required String title,
-      required IconData icon,
-      required Color color,
-      required VoidCallback onTap}) {
+  Widget _buildFeatureCard(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -199,10 +226,10 @@ class HomeScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.3),
+              color: color.withOpacity(0.4),
               blurRadius: 10,
-              offset: const Offset(0, 5),
-            )
+              offset: const Offset(0, 6),
+            ),
           ],
         ),
         child: Row(
@@ -216,7 +243,7 @@ class HomeScreen extends StatelessWidget {
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
               ),
-            )
+            ),
           ],
         ),
       ),

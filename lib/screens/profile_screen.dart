@@ -28,9 +28,10 @@ class ProfileScreen extends StatelessWidget {
               final err = await FirebaseAuthService.deleteAccount();
               if (err == null) {
                 Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    (_) => false);
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (_) => false,
+                );
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
               }
@@ -44,52 +45,50 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuthService.currentUser;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-      title: const Text(
-        "My Profile",
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 18, // Reduced text size
-          fontWeight: FontWeight.w500,
+        title: const Text(
+          "My Profile",
+          style: TextStyle(color: Colors.white),
         ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      iconTheme: const IconThemeData(color: Colors.white), // White back icon
-      toolbarHeight: 45, // Reduced height
-    ),
-      body: Stack(
-        children: [
-          // Background Gradient
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF0f2027), Color(0xFF203a43), Color(0xFF2c5364)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isDark
+                ? [Color(0xFF0f2027), Color(0xFF203a43), Color(0xFF2c5364)]
+                : [Color(0xFFd0eaf5), Color(0xFFa5cfe8), Color(0xFF7fb1d6)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
-
-          // Profile Card
-          Center(
+        ),
+        child: SafeArea(
+          child: Center(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(30),
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
                 child: Container(
-                  width: MediaQuery.of(context).size.width * 0.9,
-                  padding: const EdgeInsets.all(25),
+                  width: size.width * 0.9,
+                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: isDark
+                        ? Colors.white.withOpacity(0.05)
+                        : Colors.white.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(30),
                     border: Border.all(color: Colors.white.withOpacity(0.2)),
                   ),
                   child: user == null
-                      ? const Center(child: Text("No user logged in.", style: TextStyle(color: Colors.white)))
+                      ? const Text("No user logged in.", style: TextStyle(color: Colors.white))
                       : Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -99,22 +98,20 @@ class ProfileScreen extends StatelessWidget {
                               child: Icon(Icons.person, size: 50, color: Colors.white),
                             ),
                             const SizedBox(height: 20),
-                            Text(
-                              "Email:",
-                              style: TextStyle(color: Colors.white70, fontSize: 14),
-                            ),
+                            Text("Email:", style: TextStyle(color: Colors.white70)),
                             Text(
                               user.email ?? "",
                               style: const TextStyle(
                                 fontSize: 18,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
                                 color: Colors.white,
                               ),
                             ),
                             const SizedBox(height: 30),
 
                             // Buttons
-                            CustomProfileButton(
+                            _buildProfileButton(
+                              context,
                               icon: Icons.edit,
                               label: "Update Username",
                               onPressed: () => Navigator.push(
@@ -123,7 +120,8 @@ class ProfileScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            CustomProfileButton(
+                            _buildProfileButton(
+                              context,
                               icon: Icons.lock,
                               label: "Update Password",
                               onPressed: () => Navigator.push(
@@ -132,13 +130,15 @@ class ProfileScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            CustomProfileButton(
+                            _buildProfileButton(
+                              context,
                               icon: Icons.delete_forever,
                               label: "Delete Account",
                               color: Colors.redAccent,
                               onPressed: () => _deleteAccount(context),
                             ),
                             const SizedBox(height: 30),
+
                             TextButton.icon(
                               onPressed: () => _logout(context),
                               icon: const Icon(Icons.logout, color: Colors.white70),
@@ -153,28 +153,18 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
-}
 
-class CustomProfileButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
-  final Color? color;
-
-  const CustomProfileButton({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-    this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildProfileButton(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+    Color? color,
+  }) {
     return ElevatedButton.icon(
       icon: Icon(icon, size: 20),
       label: Text(label, style: const TextStyle(fontSize: 16)),
@@ -182,7 +172,9 @@ class CustomProfileButton extends StatelessWidget {
         backgroundColor: color ?? Colors.tealAccent[700],
         foregroundColor: Colors.white,
         minimumSize: const Size(double.infinity, 48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 6,
+        shadowColor: Colors.black38,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       onPressed: onPressed,
     );
