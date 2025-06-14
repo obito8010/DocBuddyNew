@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import 'chatbot_screen.dart';
 import 'virtual_assistant_screen.dart';
+import 'profile_screen.dart'; // Add this import
 import '../main.dart'; // themeNotifier
 
 class HomeScreen extends StatelessWidget {
@@ -14,6 +15,8 @@ class HomeScreen extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Logged out successfully')),
     );
+
+    Navigator.pop(context); // Close drawer after logout
   }
 
   @override
@@ -39,6 +42,31 @@ class HomeScreen extends StatelessWidget {
                 child: Icon(Icons.person, color: Colors.teal),
               ),
             ),
+            ListTile(
+              leading: const Icon(Icons.chat_bubble),
+              title: const Text('DocChat Bot'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatbotScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.mic),
+              title: const Text('Virtual Assistant'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const VirtualAssistantScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+              },
+            ),
+            const Divider(),
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text('Logout'),
