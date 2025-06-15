@@ -15,18 +15,34 @@ class VirtualAssistantScreen extends StatefulWidget {
 class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
   final stt.SpeechToText _speech = stt.SpeechToText();
   final FlutterTts _tts = FlutterTts();
+
   bool _isListening = false;
   bool _isSpeaking = false;
   List<Map<String, String>> _conversation = [];
   String _recognizedText = "Tap the mic and start speaking...";
 
+  double _speechRate = 0.7; // Slower default
+  final List<double> _rates = [0.7, 1.0, 1.5, 2.0, 0.5];
+  int _rateIndex = 0;
+
+  List<dynamic> _availableVoices = [];
+  String? _selectedVoice;
+
   @override
   void initState() {
     super.initState();
     _initializeSpeech();
-    _tts.setCompletionHandler(() {
-      setState(() => _isSpeaking = false);
-    });
+    _initTTS();
+  }
+
+  Future<void> _initTTS() async {
+    _tts.setCompletionHandler(() => setState(() => _isSpeaking = false));
+    _tts.setStartHandler(() => setState(() => _isSpeaking = true));
+    _availableVoices = await _tts.getVoices;
+    _selectedVoice = _availableVoices
+        .firstWhere((voice) => voice['name'].toString().contains('en'), orElse: () => _availableVoices.first)['name'];
+    await _tts.setVoice({"name": _selectedVoice!});
+    await _tts.setSpeechRate(_speechRate);
   }
 
   Future<void> _initializeSpeech() async {
@@ -42,6 +58,13 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
     }
   }
 
+  void _toggleSpeed() {
+    _rateIndex = (_rateIndex + 1) % _rates.length;
+    setState(() {
+      _speechRate = _rates[_rateIndex];
+    });
+  }
+
   void _startListening() async {
     if (_isSpeaking) {
       await _tts.stop();
@@ -50,7 +73,6 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
 
     if (!_isListening) {
       bool available = await _speech.initialize();
-
       if (available) {
         setState(() => _isListening = true);
         await _speech.listen(
@@ -78,7 +100,7 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
     setState(() => _conversation.add({"user": userInput}));
 
     const String apiUrl = "https://api.groq.com/openai/v1/chat/completions";
-    const String apiKey = "your_groq_api_key_here";
+    const String apiKey = "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"; // Replace with env config
 
     try {
       final response = await http.post(
@@ -93,7 +115,7 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
             {
               "role": "system",
               "content":
-                  "You are DocBuddy, a professional virtual doctor. Provide short, precise and complete medical advice in a brief manner, avoiding unnecessary details."
+                  "You are DocBuddy, a friendly virtual doctor. Ask for more symptoms, give helpful advice, and always recommend a real doctor for serious issues. Only answer medical questions."
             },
             {"role": "user", "content": userInput}
           ],
@@ -115,23 +137,54 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
   }
 
   Future<void> _speak(String text) async {
-    setState(() => _isSpeaking = true);
+    await _tts.setSpeechRate(_speechRate);
+    if (_selectedVoice != null) {
+      await _tts.setVoice({"name": _selectedVoice!});
+    }
     await _tts.speak(text);
   }
 
-  void _stopSpeaking() async {
-    await _tts.stop();
-    setState(() => _isSpeaking = false);
-  }
-
-  @override
-  void dispose() {
-    _speech.stop();
-    _tts.stop();
-    super.dispose();
+  void _openVoiceSettings() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.black87,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: _availableVoices.isEmpty
+              ? const Text("No voices found", style: TextStyle(color: Colors.white))
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text("Select Voice", style: TextStyle(color: Colors.white, fontSize: 18)),
+                    const SizedBox(height: 10),
+                    ..._availableVoices.take(10).map((voice) {
+                      return ListTile(
+                        title: Text(voice['name'], style: const TextStyle(color: Colors.white)),
+                        leading: Radio<String>(
+                          value: voice['name'],
+                          groupValue: _selectedVoice,
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedVoice = value!;
+                            });
+                            Navigator.pop(context);
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+        );
+      },
+    );
   }
 
   Widget _buildChatBubble(String text, bool isUser) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -139,29 +192,18 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
         padding: const EdgeInsets.all(14),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         decoration: BoxDecoration(
-          color: isUser
-              ? Colors.teal
-              : Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white.withOpacity(0.1)
-                  : Colors.grey.shade200,
+          color: isUser ? Colors.teal : (isDark ? Colors.white.withOpacity(0.1) : Colors.grey.shade200),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
             bottomLeft: Radius.circular(isUser ? 16 : 0),
             bottomRight: Radius.circular(isUser ? 0 : 16),
           ),
-          border: !isUser && Theme.of(context).brightness == Brightness.dark
-              ? Border.all(color: Colors.white.withOpacity(0.2))
-              : null,
         ),
         child: Text(
           text,
           style: TextStyle(
-            color: isUser
-                ? Colors.white
-                : Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white70
-                    : Colors.black87,
+            color: isUser ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
             fontSize: 16,
           ),
         ),
@@ -171,22 +213,23 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text(
-          "Virtual Doctor Assistant",
-          style: TextStyle(color: Colors.white),
-        ),
+        title: const Text("Virtual Doctor Assistant", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: _openVoiceSettings,
+          )
+        ],
       ),
       body: Stack(
         children: [
-          // Gradient background
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -198,8 +241,6 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
               ),
             ),
           ),
-
-          // Glassmorphism chat window
           SafeArea(
             child: Column(
               children: [
@@ -210,6 +251,7 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      margin: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: isDark ? Colors.white.withOpacity(0.1) : Colors.white.withOpacity(0.3),
                         border: Border.all(color: Colors.white.withOpacity(0.2)),
@@ -229,17 +271,28 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
                               style: const TextStyle(color: Colors.white, fontSize: 16),
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: _toggleSpeed,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.teal.withOpacity(0.8),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text("${_speechRate}x", style: const TextStyle(color: Colors.white)),
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
                 Expanded(
                   child: ListView.builder(
                     reverse: true,
                     itemCount: _conversation.length,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.only(bottom: 20),
                     itemBuilder: (context, index) {
                       final msg = _conversation[_conversation.length - 1 - index];
                       final isUser = msg.containsKey("user");
@@ -247,7 +300,6 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
                     },
                   ),
                 ),
-                const SizedBox(height: 8),
                 GestureDetector(
                   onTap: _isListening ? _stopListening : _startListening,
                   child: AnimatedContainer(
