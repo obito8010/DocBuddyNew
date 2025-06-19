@@ -23,6 +23,7 @@ dependencies:
   logger: ^2.2.0
   lottie: ^3.3.1
   flutter_native_splash: ^2.4.6
+  flutter_dotenv: ^5.1.0
 
 dev_dependencies:
   flutter_test:
@@ -37,7 +38,6 @@ flutter_icons:
   adaptive_icon_background: "#ffffff"
   adaptive_icon_foreground: "assets/app_icon.png"
 
-# ⛔ Disable native splash screen so Lottie animation shows only
 flutter_native_splash:
   android: false
   ios: false
@@ -48,3 +48,4 @@ flutter:
   assets:
     - assets/app_icon.png
     - assets/animation/health_loading.json
+    - .env

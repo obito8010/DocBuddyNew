@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:http/http.dart' as http;
@@ -21,7 +22,7 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
   List<Map<String, String>> _conversation = [];
   String _recognizedText = "Tap the mic and start speaking...";
 
-  double _speechRate = 0.7; // Slower default
+  double _speechRate = 0.7;
   final List<double> _rates = [0.7, 1.0, 1.5, 2.0, 0.5];
   int _rateIndex = 0;
 
@@ -99,8 +100,13 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
   Future<void> _getChatbotResponse(String userInput) async {
     setState(() => _conversation.add({"user": userInput}));
 
+    final apiKey = dotenv.env['Virtual_API_KEY'];
+    if (apiKey == null || apiKey.isEmpty) {
+      _speak("API key is missing. Please check your configuration.");
+      return;
+    }
+
     const String apiUrl = "https://api.groq.com/openai/v1/chat/completions";
-    const String apiKey = "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"; // Replace with env config
 
     try {
       final response = await http.post(

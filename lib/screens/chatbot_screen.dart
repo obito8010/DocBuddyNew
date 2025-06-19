@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:open_file/open_file.dart';
@@ -55,12 +56,18 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   }
 
   Future<String> fetchDoctorResponse(String userMessage) async {
+    final apiKey = dotenv.env['GROQ_API_KEY'];
+
+    if (apiKey == null || apiKey.isEmpty) {
+      return "API key not found. Please check your .env configuration.";
+    }
+
     try {
       final response = await http.post(
         Uri.parse("https://api.groq.com/openai/v1/chat/completions"),
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer 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",
+          "Authorization": "Bearer $apiKey",
         },
         body: jsonEncode({
           "model": "llama3-8b-8192",
@@ -68,7 +75,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             {
               "role": "system",
               "content":
-                  "You are DocBuddy, a friendly and professional AI doctor. Only answer **medical-related questions**. Based on symptoms, provide follow-up questions, possible diagnosis, suggested medicines, precautions, treatments, and diet tips. If the symptoms suggest something serious, **gently tell the user to consult a real doctor**. Avoid robotic tone."
+                  "You are DocBuddy, a friendly and professional AI doctor. Only answer medical-related questions. Based on symptoms, provide follow-up questions, possible diagnosis, suggested medicines, precautions, treatments, and diet tips. If the symptoms suggest something serious, gently tell the user to consult a real doctor. Avoid robotic tone."
             },
             {"role": "user", "content": userMessage}
           ],
@@ -83,7 +90,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         return "Sorry, something went wrong. Please try again.";
       }
     } catch (e) {
-      return "An error occurred. Please try again.";
+      return "An error occurred. Please check your network or try again.";
     }
   }
 
@@ -94,14 +101,16 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         return pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Text("DocBuddy - Medical Report", style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
+            pw.Text("DocBuddy - Medical Report",
+                style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 12),
             ...messages.map((msg) => pw.Text(
                   "${msg['sender'] == 'user' ? 'You' : 'DocBuddy'}: ${msg['text']}",
                   style: pw.TextStyle(fontSize: 14),
                 )),
             pw.SizedBox(height: 20),
-            pw.Text("Note: Please consult a real doctor for serious conditions.", style: pw.TextStyle(fontSize: 12)),
+            pw.Text("Note: Please consult a real doctor for serious conditions.",
+                style: pw.TextStyle(fontSize: 12)),
           ],
         );
       },
