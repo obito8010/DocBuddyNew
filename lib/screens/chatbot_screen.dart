@@ -2,11 +2,11 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:open_file/open_file.dart';
 import 'package:http/http.dart' as http;
+import 'package:animated_text_kit/animated_text_kit.dart';
 import '../services/firestore_service.dart';
 
 class ChatbotScreen extends StatefulWidget {
@@ -20,7 +20,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   final TextEditingController _messageController = TextEditingController();
   final List<Map<String, String>> messages = [];
   final FirestoreService _firestoreService = FirestoreService();
-  bool isLoading = false;
+  String animatedBotResponse = "";
 
   @override
   void initState() {
@@ -40,34 +40,33 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
     setState(() {
       messages.add({'sender': 'user', 'text': message});
-      isLoading = true;
+      animatedBotResponse = "";
+      _messageController.clear();
     });
 
     await _firestoreService.addChatMessage('user', message);
     final response = await fetchDoctorResponse(message);
 
     setState(() {
-      messages.add({'sender': 'bot', 'text': response});
-      isLoading = false;
+      animatedBotResponse = response;
     });
 
-    await _firestoreService.addChatMessage('bot', response);
-    _messageController.clear();
+    await Future.delayed(Duration(milliseconds: 10 * response.length), () {
+      setState(() {
+        messages.add({'sender': 'bot', 'text': response});
+        animatedBotResponse = "";
+      });
+      _firestoreService.addChatMessage('bot', response);
+    });
   }
 
   Future<String> fetchDoctorResponse(String userMessage) async {
-    final apiKey = dotenv.env['GROQ_API_KEY'];
-
-    if (apiKey == null || apiKey.isEmpty) {
-      return "API key not found. Please check your .env configuration.";
-    }
-
     try {
       final response = await http.post(
         Uri.parse("https://api.groq.com/openai/v1/chat/completions"),
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer $apiKey",
+          "Authorization": "Bearer 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",
         },
         body: jsonEncode({
           "model": "llama3-8b-8192",
@@ -90,7 +89,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         return "Sorry, something went wrong. Please try again.";
       }
     } catch (e) {
-      return "An error occurred. Please check your network or try again.";
+      return "An error occurred. Please try again.";
     }
   }
 
@@ -157,8 +156,38 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                 child: ListView.builder(
                   reverse: true,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  itemCount: messages.length,
+                  itemCount: messages.length + (animatedBotResponse.isNotEmpty ? 1 : 0),
                   itemBuilder: (context, index) {
+                    if (animatedBotResponse.isNotEmpty && index == 0) {
+                      return Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.15)
+                                : Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: AnimatedTextKit(
+                            animatedTexts: [
+                              TypewriterAnimatedText(
+                                animatedBotResponse,
+                                textStyle: TextStyle(
+                                  color: isDark ? Colors.white : Colors.black87,
+                                  fontSize: 16,
+                                ),
+                                speed: const Duration(milliseconds: 8),
+                              ),
+                            ],
+                            isRepeatingAnimation: false,
+                            totalRepeatCount: 1,
+                          ),
+                        ),
+                      );
+                    }
+
                     final msg = messages[messages.length - index - 1];
                     final isUser = msg['sender'] == 'user';
 
@@ -199,11 +228,6 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                   },
                 ),
               ),
-              if (isLoading)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 10),
-                  child: CircularProgressIndicator(),
-                ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
                 child: Row(

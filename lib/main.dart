@@ -3,18 +3,19 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lottie/lottie.dart';
 
 import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 
-final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load environment variables from .env file
+  // Load environment variables
   await dotenv.load(fileName: ".env");
 
   await Firebase.initializeApp(
@@ -24,6 +25,19 @@ Future<void> main() async {
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
+
+  final prefs = await SharedPreferences.getInstance();
+  final savedTheme = prefs.getString('themeMode');
+
+  if (savedTheme != null) {
+    themeNotifier.value = ThemeMode.values.firstWhere(
+      (mode) => mode.toString() == savedTheme,
+      orElse: () => ThemeMode.system,
+    );
+  } else {
+    final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    themeNotifier.value = brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light;
+  }
 
   runApp(const DocBuddyApp());
 }

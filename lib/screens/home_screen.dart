@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'chatbot_screen.dart';
 import 'virtual_assistant_screen.dart';
@@ -18,6 +19,14 @@ class HomeScreen extends StatelessWidget {
     );
 
     Navigator.pop(context); // Close drawer after logout
+  }
+
+  Future<void> _toggleTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    themeNotifier.value = themeNotifier.value == ThemeMode.light
+        ? ThemeMode.dark
+        : ThemeMode.light;
+    await prefs.setString('themeMode', themeNotifier.value.toString());
   }
 
   @override
@@ -92,11 +101,7 @@ class HomeScreen extends StatelessWidget {
                   : Icons.dark_mode,
               color: Colors.white,
             ),
-            onPressed: () {
-              themeNotifier.value = themeNotifier.value == ThemeMode.light
-                  ? ThemeMode.dark
-                  : ThemeMode.light;
-            },
+            onPressed: _toggleTheme,
           ),
         ],
       ),
