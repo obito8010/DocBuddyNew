@@ -5,56 +5,162 @@ class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  /// Adds a single chat message to Firestore under the current user's document.
-  Future<void> addChatMessage(String sender, String message) async {
+  // ✅ Create a new chat session
+  Future<String?> createNewChatSession({String? title}) async {
     final user = _auth.currentUser;
-    if (user == null) {
-      print("User not logged in. Cannot save chat.");
-      return;
-    }
+    if (user == null) return null;
 
     try {
-      await _db
+      final doc = await _db
           .collection('users')
           .doc(user.uid)
-          .collection('chat_history')
+          .collection('chats')
           .add({
-        'sender': sender,
-        'message': message,
-        'timestamp': FieldValue.serverTimestamp(),
+        'title': title ?? 'New Chat',
+        'createdAt': FieldValue.serverTimestamp(),
       });
-      print("Message saved to Firestore");
+      return doc.id;
     } catch (e) {
-      print("Failed to save message: $e");
+      print("❌ Failed to create chat: $e");
+      return null;
     }
   }
 
-  /// Retrieves the chat history for the current user from Firestore.
-  Future<List<Map<String, String>>> getChatHistory() async {
+  // ✅ List all chat sessions
+  Future<List<Map<String, dynamic>>> getAllChatSessions() async {
     final user = _auth.currentUser;
-    if (user == null) {
-      print("User not logged in. Cannot fetch chat history.");
-      return [];
-    }
+    if (user == null) return [];
 
     try {
       final snapshot = await _db
           .collection('users')
           .doc(user.uid)
-          .collection('chat_history')
-          .orderBy('timestamp', descending: false)
+          .collection('chats')
+          .orderBy('createdAt', descending: true)
           .get();
 
       return snapshot.docs.map((doc) {
-        final data = doc.data();
         return {
-          'sender': data['sender']?.toString() ?? '',
-          'text': data['message']?.toString() ?? '',
+          'chatId': doc.id,
+          'title': doc['title'] ?? 'Chat',
+          'createdAt': doc['createdAt'],
         };
       }).toList();
     } catch (e) {
-      print("Failed to fetch chat history: $e");
+      print("❌ Failed to fetch chats: $e");
       return [];
+    }
+  }
+
+  // ✅ Add a message to a specific chat
+  Future<void> addMessageToChat(
+      String chatId, String sender, String message) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      await _db
+          .collection('users')
+          .doc(user.uid)
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .add({
+        'sender': sender,
+        'message': message,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print("❌ Failed to add message: $e");
+    }
+  }
+
+  // ✅ Get messages from a specific chat
+  Future<List<Map<String, dynamic>>> getMessages(String chatId) async {
+    final user = _auth.currentUser;
+    if (user == null) return [];
+
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .doc(user.uid)
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .orderBy('timestamp')
+          .get();
+
+      return snapshot.docs.map((doc) {
+        return {
+          'id': doc.id,
+          'sender': doc['sender'],
+          'text': doc['message'],
+          'timestamp': doc['timestamp'],
+        };
+      }).toList();
+    } catch (e) {
+      print("❌ Failed to fetch messages: $e");
+      return [];
+    }
+  }
+
+  // ✅ Delete a message from a specific chat
+  Future<void> deleteMessage(String chatId, String messageId) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      await _db
+          .collection('users')
+          .doc(user.uid)
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc(messageId)
+          .delete();
+    } catch (e) {
+      print("❌ Failed to delete message: $e");
+    }
+  }
+
+  // ✅ Rename a chat session
+  Future<void> renameChatSession(String chatId, String newTitle) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      await _db
+          .collection('users')
+          .doc(user.uid)
+          .collection('chats')
+          .doc(chatId)
+          .update({'title': newTitle});
+    } catch (e) {
+      print("❌ Failed to rename chat: $e");
+    }
+  }
+
+  // ✅ Delete a chat session and all its messages
+  Future<void> deleteChatSession(String chatId) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final chatRef = _db
+          .collection('users')
+          .doc(user.uid)
+          .collection('chats')
+          .doc(chatId);
+
+      final messagesSnapshot = await chatRef.collection('messages').get();
+
+      for (var doc in messagesSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      await chatRef.delete();
+    } catch (e) {
+      print("❌ Failed to delete chat session: $e");
     }
   }
 }
