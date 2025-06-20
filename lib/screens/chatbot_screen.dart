@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:open_file/open_file.dart';
@@ -61,12 +62,18 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   }
 
   Future<String> fetchDoctorResponse(String userMessage) async {
+    final apiKey = dotenv.env['GROQ_API_KEY'];
+
+    if (apiKey == null || apiKey.isEmpty) {
+      return "API key is missing. Please check your configuration.";
+    }
+
     try {
       final response = await http.post(
         Uri.parse("https://api.groq.com/openai/v1/chat/completions"),
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer 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",
+          "Authorization": "Bearer $apiKey",
         },
         body: jsonEncode({
           "model": "llama3-8b-8192",

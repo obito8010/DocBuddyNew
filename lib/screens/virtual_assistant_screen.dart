@@ -22,27 +22,43 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
   List<Map<String, String>> _conversation = [];
   String _recognizedText = "Tap the mic and start speaking...";
 
-  double _speechRate = 0.7;
-  final List<double> _rates = [0.7, 1.0, 1.5, 2.0, 0.5];
+  double _speechRate = 0.8;
+  final List<double> _rates = [0.8, 1.0, 1.5, 0.5];
   int _rateIndex = 0;
 
   List<dynamic> _availableVoices = [];
   String? _selectedVoice;
 
+  void ensureEnvLoaded() {
+    if (dotenv.env['Virtual_API_KEY'] == null) {
+      dotenv.load(fileName: ".env");
+    }
+  }
+
   @override
   void initState() {
+    ensureEnvLoaded(); // ✅ make sure env is loaded
     super.initState();
     _initializeSpeech();
     _initTTS();
   }
 
+  @override
+  void dispose() {
+    _tts.stop();
+    _speech.stop();
+    super.dispose();
+  }
+
   Future<void> _initTTS() async {
     _tts.setCompletionHandler(() => setState(() => _isSpeaking = false));
     _tts.setStartHandler(() => setState(() => _isSpeaking = true));
-    _availableVoices = await _tts.getVoices;
-    _selectedVoice = _availableVoices
-        .firstWhere((voice) => voice['name'].toString().contains('en'), orElse: () => _availableVoices.first)['name'];
-    await _tts.setVoice({"name": _selectedVoice!});
+    List voices = await _tts.getVoices;
+    _availableVoices = voices.where((v) => v['locale']?.startsWith('en') ?? false).take(3).toList();
+    if (_availableVoices.isNotEmpty) {
+      _selectedVoice = _availableVoices[0]['name'];
+      await _tts.setVoice({"name": _selectedVoice!});
+    }
     await _tts.setSpeechRate(_speechRate);
   }
 
@@ -53,17 +69,13 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
     );
 
     if (!available) {
-      setState(() {
-        _recognizedText = "Speech recognition not available";
-      });
+      setState(() => _recognizedText = "Speech recognition not available");
     }
   }
 
   void _toggleSpeed() {
     _rateIndex = (_rateIndex + 1) % _rates.length;
-    setState(() {
-      _speechRate = _rates[_rateIndex];
-    });
+    setState(() => _speechRate = _rates[_rateIndex]);
   }
 
   void _startListening() async {
@@ -101,6 +113,8 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
     setState(() => _conversation.add({"user": userInput}));
 
     final apiKey = dotenv.env['Virtual_API_KEY'];
+    debugPrint("🔑 API Key Loaded: $apiKey"); // ✅ Debug line
+
     if (apiKey == null || apiKey.isEmpty) {
       _speak("API key is missing. Please check your configuration.");
       return;
@@ -154,6 +168,9 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.black87,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.4,
+      ),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -167,16 +184,14 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
                   children: [
                     const Text("Select Voice", style: TextStyle(color: Colors.white, fontSize: 18)),
                     const SizedBox(height: 10),
-                    ..._availableVoices.take(10).map((voice) {
+                    ..._availableVoices.map((voice) {
                       return ListTile(
                         title: Text(voice['name'], style: const TextStyle(color: Colors.white)),
                         leading: Radio<String>(
                           value: voice['name'],
                           groupValue: _selectedVoice,
                           onChanged: (value) {
-                            setState(() {
-                              _selectedVoice = value!;
-                            });
+                            setState(() => _selectedVoice = value!);
                             Navigator.pop(context);
                           },
                         ),
