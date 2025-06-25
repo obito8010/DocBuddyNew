@@ -9,6 +9,7 @@ import 'package:lottie/lottie.dart';
 import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/reminder_screen.dart'; // ⬅️ New Screen
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 
@@ -31,9 +32,7 @@ Future<void> main() async {
     debugPrint('❌ Firebase initialization failed: $e');
   }
 
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   final prefs = await SharedPreferences.getInstance();
   final savedTheme = prefs.getString('themeMode');
@@ -72,7 +71,11 @@ class DocBuddyApp extends StatelessWidget {
             scaffoldBackgroundColor: const Color(0xFF121212),
           ),
           themeMode: mode,
-          home: const SplashScreen(),
+          initialRoute: '/',
+          routes: {
+            '/': (_) => const SplashScreen(),
+            '/reminders': (_) => const ReminderScreen(), // ⬅️ New route
+          },
         );
       },
     );
@@ -90,6 +93,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+
     Future.delayed(const Duration(seconds: 3), () {
       Navigator.pushReplacement(
         context,

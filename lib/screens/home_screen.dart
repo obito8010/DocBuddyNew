@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'chatbot_screen.dart';
 import 'virtual_assistant_screen.dart';
 import 'profile_screen.dart';
+import 'reminder_screen.dart'; // NEW
+import 'nearby_screen.dart'; // NEW
 import '../main.dart'; // themeNotifier
 
 class HomeScreen extends StatelessWidget {
@@ -13,12 +15,10 @@ class HomeScreen extends StatelessWidget {
 
   void _logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
-
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Logged out successfully')),
     );
-
-    Navigator.pop(context); // Close drawer after logout
+    Navigator.pop(context);
   }
 
   Future<void> _toggleTheme() async {
@@ -73,6 +73,22 @@ class HomeScreen extends StatelessWidget {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.notifications_active),
+              title: const Text('Health Reminders'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ReminderScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.local_hospital),
+              title: const Text('Nearby Hospitals & Stores'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const NearbyScreen()));
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.person),
               title: const Text('Profile'),
               onTap: () {
@@ -96,9 +112,7 @@ class HomeScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: Icon(
-              themeNotifier.value == ThemeMode.dark
-                  ? Icons.light_mode
-                  : Icons.dark_mode,
+              themeNotifier.value == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode,
               color: Colors.white,
             ),
             onPressed: _toggleTheme,
@@ -130,13 +144,9 @@ class HomeScreen extends StatelessWidget {
                       width: double.infinity,
                       height: size.height * 0.23,
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withOpacity(0.05)
-                            : Colors.white.withOpacity(0.3),
+                        color: isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.3),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
-                        ),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(20),
@@ -155,19 +165,12 @@ class HomeScreen extends StatelessWidget {
                                 children: const [
                                   Text(
                                     "Hello 👋",
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
+                                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
                                   ),
                                   SizedBox(height: 4),
                                   Text(
                                     "Need medical help? Ask DocBuddy anything!",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.white70,
-                                    ),
+                                    style: TextStyle(fontSize: 16, color: Colors.white70),
                                   ),
                                 ],
                               ),
@@ -203,6 +206,28 @@ class HomeScreen extends StatelessWidget {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const VirtualAssistantScreen()),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildFeatureCard(
+                      context,
+                      title: 'Health Reminders',
+                      icon: Icons.notifications_active,
+                      color: Colors.green,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ReminderScreen()),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildFeatureCard(
+                      context,
+                      title: 'Nearby Hospitals & Stores',
+                      icon: Icons.local_hospital_outlined,
+                      color: Colors.orange,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const NearbyScreen()),
                       ),
                     ),
                   ],
@@ -243,11 +268,7 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(width: 20),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 20,
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.w600),
             ),
           ],
         ),
